@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const NizhalApp());
 }
 
@@ -14,19 +23,17 @@ class NizhalApp extends StatelessWidget {
       title: 'NIZHAL',
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF08080D),
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF9B5CFF),
           brightness: Brightness.dark,
         ),
+        scaffoldBackgroundColor: const Color(0xFF0D0B12),
         useMaterial3: true,
       ),
       home: const LoginPage(),
     );
   }
 }
-
-// ==================== LOGIN PAGE ====================
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -40,6 +47,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
 
   bool hidePassword = true;
+  bool loading = false;
 
   @override
   void dispose() {
@@ -48,231 +56,142 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  Future<void> login() async {
+    if (emailController.text.trim().isEmpty ||
+        passwordController.text.isEmpty) {
+      showMessage('Enter email and password');
+      return;
+    }
+
+    setState(() => loading = true);
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomePage(),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      showMessage(e.message ?? 'Login failed');
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              children: [
-                const SizedBox(height: 35),
-
-                // Logo
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFB46CFF),
-                        Color(0xFF7040FF),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF9B5CFF).withOpacity(0.35),
-                        blurRadius: 30,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.nightlight_round,
-                    size: 48,
-                    color: Colors.white,
-                  ),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'NIZHAL',
+                style: TextStyle(
+                  fontSize: 38,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
 
-                const SizedBox(height: 22),
+              const SizedBox(height: 8),
 
-                const Text(
-                  'NIZHAL',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 5,
-                  ),
+              const Text(
+                'Stay connected',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 16,
                 ),
+              ),
 
-                const SizedBox(height: 8),
+              const SizedBox(height: 45),
 
-                Text(
-                  'Your private space',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.55),
-                    fontSize: 15,
-                  ),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
                 ),
+              ),
 
-                const SizedBox(height: 45),
+              const SizedBox(height: 18),
 
-                // Email
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Email or username',
-                    prefixIcon: const Icon(Icons.person_outline),
-                    filled: true,
-                    fillColor: const Color(0xFF15151D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
+              TextField(
+                controller: passwordController,
+                obscureText: hidePassword,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      hidePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Password
-                TextField(
-                  controller: passwordController,
-                  obscureText: hidePassword,
-                  decoration: InputDecoration(
-                    hintText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          hidePassword = !hidePassword;
-                        });
-                      },
-                      icon: Icon(
-                        hidePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF15151D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: const Text('Forgot password?'),
-                  ),
-                ),
-
-                const SizedBox(height: 18),
-
-                // Login
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9B5CFF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'LOGIN',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: Colors.white.withOpacity(0.12),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: Text(
-                        'OR',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        color: Colors.white.withOpacity(0.12),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 25),
-
-                // Create account
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: OutlinedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignupPage(),
-                        ),
-                      );
+                      setState(() {
+                        hidePassword = !hidePassword;
+                      });
                     },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withOpacity(0.15),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'CREATE ACCOUNT',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1,
-                      ),
-                    ),
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 35),
+              const SizedBox(height: 25),
 
-                Text(
-                  'Private. Simple. NIZHAL.',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.3),
-                    fontSize: 13,
-                  ),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton(
+                  onPressed: loading ? null : login,
+                  child: loading
+                      ? const CircularProgressIndicator()
+                      : const Text('LOGIN'),
                 ),
+              ),
 
-                const SizedBox(height: 20),
-              ],
-            ),
+              const SizedBox(height: 18),
+
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SignupPage(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Create Account',
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 }
-
-// ==================== SIGNUP PAGE ====================
-
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
@@ -288,6 +207,7 @@ class _SignupPageState extends State<SignupPage> {
 
   bool hidePassword = true;
   bool hideConfirmPassword = true;
+  bool loading = false;
 
   @override
   void dispose() {
@@ -298,246 +218,242 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
+  Future<void> signup() async {
+    final username = usernameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+    final confirmPassword = confirmPasswordController.text;
+
+    if (username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      showMessage('Please fill all fields');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      showMessage('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage('Password must be at least 6 characters');
+      return;
+    }
+
+    setState(() => loading = true);
+
+    try {
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      await credential.user?.updateDisplayName(username);
+
+      if (!mounted) return;
+
+      showMessage('Account created successfully');
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomePage(),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'Email is already registered';
+          break;
+        case 'invalid-email':
+          message = 'Invalid email address';
+          break;
+        case 'weak-password':
+          message = 'Password is too weak';
+          break;
+        default:
+          message = e.message ?? 'Signup failed';
+      }
+
+      showMessage(message);
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: const Text('Create Account'),
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            children: [
+              const SizedBox(height: 25),
 
-                // Small logo
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFB46CFF),
-                        Color(0xFF7040FF),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF9B5CFF).withOpacity(0.3),
-                        blurRadius: 25,
-                        spreadRadius: 3,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.nightlight_round,
-                    size: 38,
-                    color: Colors.white,
-                  ),
+              const Text(
+                'Join NIZHAL',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
                 ),
+              ),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 35),
 
-                const Text(
-                  'Create Account',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+              TextField(
+                controller: usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  prefixIcon: Icon(Icons.person_outline),
+                  border: OutlineInputBorder(),
                 ),
+              ),
 
-                const SizedBox(height: 8),
+              const SizedBox(height: 18),
 
-                Text(
-                  'Join your private space',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 14,
-                  ),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
                 ),
+              ),
 
-                const SizedBox(height: 35),
+              const SizedBox(height: 18),
 
-                // Username
-                TextField(
-                  controller: usernameController,
-                  decoration: InputDecoration(
-                    hintText: 'Username',
-                    prefixIcon: const Icon(Icons.alternate_email),
-                    filled: true,
-                    fillColor: const Color(0xFF15151D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
+              TextField(
+                controller: passwordController,
+                obscureText: hidePassword,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      hidePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 15),
-
-                // Email
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Email address',
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    filled: true,
-                    fillColor: const Color(0xFF15151D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 15),
-
-                // Password
-                TextField(
-                  controller: passwordController,
-                  obscureText: hidePassword,
-                  decoration: InputDecoration(
-                    hintText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          hidePassword = !hidePassword;
-                        });
-                      },
-                      icon: Icon(
-                        hidePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF15151D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 15),
-
-                // Confirm password
-                TextField(
-                  controller: confirmPasswordController,
-                  obscureText: hideConfirmPassword,
-                  decoration: InputDecoration(
-                    hintText: 'Confirm password',
-                    prefixIcon: const Icon(Icons.lock_reset_outlined),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          hideConfirmPassword = !hideConfirmPassword;
-                        });
-                      },
-                      icon: Icon(
-                        hideConfirmPassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFF15151D),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                // Create account button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
                     onPressed: () {
-                      if (usernameController.text.trim().isEmpty ||
-                          emailController.text.trim().isEmpty ||
-                          passwordController.text.isEmpty ||
-                          confirmPasswordController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please fill all fields'),
-                          ),
-                        );
-                        return;
-                      }
-
-                      if (passwordController.text !=
-                          confirmPasswordController.text) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Passwords do not match'),
-                          ),
-                        );
-                        return;
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Account setup ready — Firebase will be connected next.',
-                          ),
-                        ),
-                      );
+                      setState(() {
+                        hidePassword = !hidePassword;
+                      });
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9B5CFF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text(
-                      'CREATE ACCOUNT',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
                   ),
                 ),
+              ),
 
-                const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Already have an account?',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                      ),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: hideConfirmPassword,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      hideConfirmPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Login'),
-                    ),
-                  ],
+                    onPressed: () {
+                      setState(() {
+                        hideConfirmPassword = !hideConfirmPassword;
+                      });
+                    },
+                  ),
                 ),
+              ),
 
-                const SizedBox(height: 20),
-              ],
-            ),
+              const SizedBox(height: 28),
+
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton(
+                  onPressed: loading ? null : signup,
+                  child: loading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(),
+                        )
+                      : const Text('CREATE ACCOUNT'),
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Already have an account? Login'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('NIZHAL'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+
+              if (!context.mounted) return;
+
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LoginPage(),
+                ),
+                (route) => false,
+              );
+            },
+          ),
+        ],
+      ),
+      body: Center(
+        child: Text(
+          'Welcome ${user?.displayName ?? 'to NIZHAL'}',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
