@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -252,8 +253,15 @@ class _SignupPageState extends State<SignupPage> {
       );
 
       await credential.user?.updateDisplayName(username);
-
-      if (!mounted) return;
+await FirebaseFirestore.instance
+    .collection('users')
+    .doc(credential.user!.uid)
+    .set({
+  'username': username,
+  'email': email,
+  'createdAt': FieldValue.serverTimestamp(),
+});
+   if (!mounted) return;
 
       showMessage('Account created successfully');
 
